@@ -71,7 +71,7 @@ SpecterTest menciptakan **Digital Twin** dari aplikasi web target, kemudian mele
 | Layer | Teknologi | Alasan |
 |---|---|---|
 | **Frontend** | Vue.js 3 + Vite | Reactive UI, cepat, cocok untuk dashboard real-time |
-| **Styling** | Vanilla CSS (dark theme) | Fleksibel, cybersecurity aesthetic |
+| **Styling** | Tailwind CSS | Utility-first, mempercepat styling, cocok untuk aesthetic cyber |
 | **Backend** | Python + Flask | Ekosistem AI/ML terbaik, integrasi LLM mudah |
 | **Agent Browser** | Playwright (Python) | Headless browser automation, multi-context paralel |
 | **LLM** | OpenAI-compatible API | Fleksibel, bisa pakai Qwen/GPT/Claude/local LLM |
