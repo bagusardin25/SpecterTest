@@ -2,25 +2,39 @@
   <div class="font-display bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col overflow-x-hidden">
     <div class="layout-container flex h-full grow flex-col">
       <div class="px-4 sm:px-10 lg:px-40 flex flex-1 justify-center py-5">
-        <div class="layout-content-container flex flex-col max-w-[1200px] w-full flex-1">
-          <header class="flex items-center justify-between whitespace-nowrap border-b border-primary/20 px-4 sm:px-10 py-4 mb-8 rounded-xl bg-background-light dark:bg-background-dark/80 backdrop-blur-md sticky top-4 z-50">
-            <div class="flex items-center gap-4 text-primary">
-              <span class="material-symbols-outlined text-3xl">bug_report</span>
-              <h2 class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight tracking-[-0.015em]">SpecterTest</h2>
+        <div class="layout-content-container flex flex-col max-w-[1200px] w-full flex-1 pt-20">
+          <header class="fixed top-0 left-0 w-full z-50 flex items-center justify-center px-4 sm:px-10 lg:px-40 py-4 border-b border-primary/20 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md transition-colors duration-300 shadow-sm">
+            <div class="flex items-center justify-between w-full max-w-[1200px]">
+              <div class="flex items-center gap-4 text-primary">
+                <span class="material-symbols-outlined text-3xl">bug_report</span>
+                <h2 class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight tracking-[-0.015em]">SpecterTest</h2>
+              </div>
+              <div class="hidden md:flex flex-1 justify-end gap-8 items-center">
+                <nav class="flex items-center gap-8">
+                  <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal" href="#">Home</a>
+                  <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal" href="#how-it-works">Features</a>
+                  <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal" href="#">Pricing</a>
+                </nav>
+                <div class="flex items-center gap-4">
+                  <button @click="toggleTheme" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-primary dark:hover:bg-primary hover:text-white dark:hover:text-white transition-all shadow-sm" title="Toggle Theme">
+                    <span class="material-symbols-outlined text-lg" v-if="isDark">light_mode</span>
+                    <span class="material-symbols-outlined text-lg" v-else>dark_mode</span>
+                  </button>
+                  <button @click="scrollToBinding" class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-5 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(127,19,236,0.5)]">
+                    <span class="truncate">Launch Simulation</span>
+                  </button>
+                </div>
+              </div>
+              <div class="md:hidden flex items-center gap-3">
+                <button @click="toggleTheme" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-primary hover:text-white transition-all shadow-sm" title="Toggle Theme">
+                  <span class="material-symbols-outlined text-lg" v-if="isDark">light_mode</span>
+                  <span class="material-symbols-outlined text-lg" v-else>dark_mode</span>
+                </button>
+                <button class="text-slate-900 dark:text-slate-100 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-2xl">menu</span>
+                </button>
+              </div>
             </div>
-            <div class="hidden md:flex flex-1 justify-end gap-8 items-center">
-              <nav class="flex items-center gap-8">
-                <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal" href="#">Home</a>
-                <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal" href="#how-it-works">Features</a>
-                <a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors text-sm font-medium leading-normal" href="#">Pricing</a>
-              </nav>
-              <button @click="scrollToBinding" class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-5 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(127,19,236,0.5)]">
-                <span class="truncate">Launch Simulation</span>
-              </button>
-            </div>
-            <button class="md:hidden text-slate-900 dark:text-slate-100">
-              <span class="material-symbols-outlined">menu</span>
-            </button>
           </header>
           
           <main class="flex-1 flex flex-col gap-16 pb-16">
@@ -204,6 +218,18 @@ const targetUrl = ref('')
 const userAgents = ref(5)
 const adminAgents = ref(2)
 const attackerAgents = ref(3)
+const isDark = ref(true)
+
+const toggleTheme = () => {
+  isDark.value = !isDark.value
+  if (isDark.value) {
+    document.documentElement.classList.add('dark')
+    localStorage.theme = 'dark'
+  } else {
+    document.documentElement.classList.remove('dark')
+    localStorage.theme = 'light'
+  }
+}
 
 const scrollToBinding = () => {
   const el = document.getElementById('binding-configuration')
@@ -221,6 +247,15 @@ const startSimulation = () => {
 }
 
 onMounted(() => {
+  // Theme initialization
+  if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    isDark.value = true
+    document.documentElement.classList.add('dark')
+  } else {
+    isDark.value = false
+    document.documentElement.classList.remove('dark')
+  }
+
   // Add material symbols font and regular space grotesk dynamically if missing
   if (!document.getElementById('material-symbols')) {
     const link = document.createElement('link')
