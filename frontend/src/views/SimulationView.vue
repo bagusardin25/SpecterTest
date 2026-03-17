@@ -1,7 +1,7 @@
 <template>
   <div class="simulation-view">
     <div class="simulation-header">
-      <h2>Simulation in Progress</h2>
+      <h2>> Simulation in Progress</h2>
       <button class="cyber-button danger" @click="abortSimulation">ABORT</button>
     </div>
 
@@ -15,17 +15,21 @@
             <span class="value">{{ totalAgents }}</span>
           </div>
           <div class="metric">
-            <span class="label">Requests/s</span>
-            <span class="value">142.5</span>
+            <span class="label">Routes</span>
+            <span class="value">{{ totalRoutes }}</span>
           </div>
           <div class="metric highlight-danger">
             <span class="label">Flaws Found</span>
-            <span class="value">3</span>
+            <span class="value">{{ flawsFound }}</span>
           </div>
           <div class="metric highlight-warning">
             <span class="label">Security Issues</span>
-            <span class="value">1</span>
+            <span class="value">{{ securityIssues }}</span>
           </div>
+        </div>
+        <div class="status-bar">
+          <span class="status-label text-mono">STATUS:</span>
+          <span class="status-value" :class="scanStatus">{{ scanStatus.toUpperCase() }}</span>
         </div>
       </div>
 
@@ -39,7 +43,7 @@
             </div>
             <div class="agent-details">
               <span class="agent-id text-mono">{{ agent.id }}</span>
-              <span class="agent-action">{{ agent.action }}</span>
+              <span class="agent-action">{{ agent.action || 'Waiting...' }}</span>
             </div>
             <div class="agent-status-dot"></div>
           </div>
@@ -69,24 +73,23 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 const terminalBody = ref(null)
 
-const totalAgents = ref(10)
-const logs = ref([
-  { time: '14:02:11', source: 'SYSTEM', level: 'info', message: 'Swarm initialized. Spawning 10 agents.' },
-  { time: '14:02:12', source: 'MAPPER', level: 'info', message: 'Discovered 42 endpoints on target https://staging.myapp.com' },
-])
+const scanId = ref('')
+const scanStatus = ref('binding')
+const totalAgents = ref(0)
+const totalRoutes = ref(0)
+const flawsFound = ref(0)
+const securityIssues = ref(0)
 
-const agents = ref([
-  { id: 'usr-01', role: 'user', action: 'Browsing /products', status: 'idle' },
-  { id: 'usr-02', role: 'user', action: 'Filling form /register', status: 'active' },
-  { id: 'adm-01', role: 'admin', action: 'Accessing /api/users', status: 'active' },
-  { id: 'atk-01', role: 'attacker', action: 'Testing SQLi on /search', status: 'danger' },
-  { id: 'atk-02', role: 'attacker', action: 'IDOR attempt on /profile/12', status: 'danger' },
-])
+const logs = ref([])
+const agents = ref([])
+
+let eventSource = null
 
 const getRoleIcon = (role) => {
   if (role === 'user') return '👤'
@@ -95,40 +98,174 @@ const getRoleIcon = (role) => {
   return '🤖'
 }
 
-let intervalId = null;
+const getTimestamp = () => {
+  const now = new Date()
+  return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+}
+
+const addLog = (source, message, level = 'info') => {
+  logs.value.push({
+    time: getTimestamp(),
+    source,
+    level,
+    message,
+  })
+  if (logs.value.length > 100) logs.value.shift()
+
+  // Auto-scroll
+  if (terminalBody.value) {
+    setTimeout(() => {
+      terminalBody.value.scrollTop = terminalBody.value.scrollHeight
+    }, 50)
+  }
+}
+
+const connectSSE = (id) => {
+  eventSource = new EventSource(`/api/simulation/${id}/stream`)
+
+  eventSource.addEventListener('crawl_started', (e) => {
+    const data = JSON.parse(e.data)
+    addLog('SYSTEM', `Crawling target: ${data.target_url}`)
+    scanStatus.value = 'binding'
+  })
+
+  eventSource.addEventListener('route_discovered', (e) => {
+    const data = JSON.parse(e.data)
+    totalRoutes.value++
+    addLog('CRAWLER', `Discovered: ${data.method} ${data.path}${data.has_form ? ' [FORM]' : ''}${data.has_auth ? ' [AUTH]' : ''}`)
+  })
+
+  eventSource.addEventListener('crawl_completed', (e) => {
+    const data = JSON.parse(e.data)
+    addLog('CRAWLER', `Crawling complete. ${data.total_routes} routes discovered.`, 'success')
+  })
+
+  eventSource.addEventListener('agent_spawned', (e) => {
+    const data = JSON.parse(e.data)
+    agents.value.push({
+      id: data.agent_id,
+      role: data.role,
+      action: 'Initializing...',
+      status: 'idle',
+    })
+    totalAgents.value = agents.value.length
+    addLog('SPAWNER', `Agent ${data.agent_id} (${data.role}) spawned`)
+  })
+
+  eventSource.addEventListener('all_agents_spawned', (e) => {
+    const data = JSON.parse(e.data)
+    addLog('SYSTEM', `All ${data.total} agents spawned: ${data.users}U/${data.admins}A/${data.attackers}ATK`, 'success')
+    scanStatus.value = 'executing'
+  })
+
+  eventSource.addEventListener('simulation_started', (e) => {
+    addLog('SYSTEM', 'Simulation started — agents are now active', 'success')
+    scanStatus.value = 'executing'
+  })
+
+  eventSource.addEventListener('agent_action', (e) => {
+    const data = JSON.parse(e.data)
+    // Update agent in list
+    const agent = agents.value.find(a => a.id === data.agent_id)
+    if (agent) {
+      agent.action = data.action
+      agent.status = 'active'
+    }
+    addLog(data.agent_id, data.action)
+  })
+
+  eventSource.addEventListener('finding_discovered', (e) => {
+    const data = JSON.parse(e.data)
+    const level = data.severity === 'critical' ? 'error' : 'warning'
+
+    if (data.category === 'logic_flaw' || data.category === 'security_issue') {
+      flawsFound.value++
+    }
+    if (data.category === 'security_issue') {
+      securityIssues.value++
+    }
+
+    addLog(data.agent_id || 'SYSTEM', `[${data.severity?.toUpperCase()}] ${data.title}`, level)
+
+    // Make the discovering agent "danger" status
+    const agent = agents.value.find(a => a.id === data.agent_id)
+    if (agent) {
+      agent.status = 'danger'
+    }
+  })
+
+  eventSource.addEventListener('simulation_completed', (e) => {
+    const data = JSON.parse(e.data)
+    addLog('SYSTEM', `Simulation complete. ${data.total_findings} findings in ${data.duration_seconds}s.`, 'success')
+    scanStatus.value = 'reporting'
+
+    // Mark all agents as completed
+    agents.value.forEach(a => {
+      a.status = 'idle'
+      a.action = 'Completed'
+    })
+  })
+
+  eventSource.addEventListener('report_generating', (e) => {
+    addLog('LLM', 'Generating narrative report via AI...', 'info')
+  })
+
+  eventSource.addEventListener('report_ready', (e) => {
+    const data = JSON.parse(e.data)
+    addLog('SYSTEM', 'Report ready! Redirecting...', 'success')
+    scanStatus.value = 'completed'
+
+    // Navigate to report after a short delay
+    setTimeout(() => {
+      if (eventSource) eventSource.close()
+      router.push({ path: '/report', query: { scan_id: data.scan_id } })
+    }, 2000)
+  })
+
+  eventSource.addEventListener('scan_error', (e) => {
+    const data = JSON.parse(e.data)
+    addLog('ERROR', data.error, 'error')
+    scanStatus.value = 'error'
+  })
+
+  eventSource.addEventListener('scan_aborted', () => {
+    addLog('SYSTEM', 'Scan aborted by user.', 'warning')
+    scanStatus.value = 'aborted'
+  })
+
+  eventSource.onerror = () => {
+    // SSE will auto-reconnect, just log it
+    addLog('SYSTEM', 'Connection interrupted, reconnecting...', 'warning')
+  }
+}
 
 onMounted(() => {
-  // Simulate incoming logs
-  intervalId = setInterval(() => {
-    const now = new Date()
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
-    
-    logs.value.push({
-      time: timeStr,
-      source: 'ATK-01',
-      level: Math.random() > 0.8 ? 'warning' : 'info',
-      message: `Injecting payload on input parameter "id". Status: ${Math.random() > 0.8 ? '200 OK (Vulnerable)' : '403 Forbidden'}`
-    })
-    
-    if (logs.value.length > 50) logs.value.shift()
-    
-    // Auto-scroll terminal
-    if (terminalBody.value) {
-      terminalBody.value.scrollTop = terminalBody.value.scrollHeight
-    }
-  }, 1500)
-  
-  // Transition to report after 15 seconds for demo
-  setTimeout(() => {
-    router.push('/report')
-  }, 15000)
+  scanId.value = route.query.scan_id || ''
+
+  if (!scanId.value) {
+    addLog('ERROR', 'No scan_id provided! Returning to home...', 'error')
+    setTimeout(() => router.push('/'), 2000)
+    return
+  }
+
+  addLog('SYSTEM', `Connecting to scan ${scanId.value}...`)
+  connectSSE(scanId.value)
 })
 
 onUnmounted(() => {
-  if (intervalId) clearInterval(intervalId)
+  if (eventSource) {
+    eventSource.close()
+    eventSource = null
+  }
 })
 
-const abortSimulation = () => {
+const abortSimulation = async () => {
+  try {
+    await fetch(`/api/scan/${scanId.value}`, { method: 'DELETE' })
+  } catch (err) {
+    // ignore
+  }
+  if (eventSource) eventSource.close()
   router.push('/')
 }
 </script>
@@ -185,6 +322,27 @@ h3 {
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.5rem;
 }
+
+/* Status */
+.status-bar {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.status-label { color: var(--text-muted); margin-right: 0.5rem; }
+.status-value { font-weight: bold; }
+.status-value.binding { color: var(--accent-color); }
+.status-value.spawning { color: var(--primary-color); }
+.status-value.executing { color: var(--warning-color); animation: pulse-text 1s infinite; }
+.status-value.reporting { color: var(--primary-color); }
+.status-value.completed { color: #27c93f; }
+.status-value.error { color: var(--danger-color); }
+
+@keyframes pulse-text { 50% { opacity: 0.5; } }
 
 /* Metrics */
 .metrics-grid {
@@ -344,6 +502,10 @@ h3 {
 
 .log-entry.warning .source { color: var(--warning-color); }
 .log-entry.warning .message { color: var(--warning-color); }
+.log-entry.error .source { color: var(--danger-color); }
+.log-entry.error .message { color: var(--danger-color); }
+.log-entry.success .source { color: #27c93f; }
+.log-entry.success .message { color: #27c93f; }
 
 .cursor {
   display: inline-block;

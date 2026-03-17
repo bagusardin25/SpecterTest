@@ -437,12 +437,31 @@ const scrollToBinding = () => {
   }
 }
 
-const startSimulation = () => {
+const startSimulation = async () => {
   if (!targetUrl.value) {
     alert("Please enter a Target URL before initiating the swarm.")
     return
   }
-  router.push('/simulate')
+  try {
+    const response = await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        target_url: targetUrl.value,
+        user_agents: Number(userAgents.value),
+        admin_agents: Number(adminAgents.value),
+        attacker_agents: Number(attackerAgents.value),
+      }),
+    })
+    const data = await response.json()
+    if (data.scan_id) {
+      router.push({ path: '/simulate', query: { scan_id: data.scan_id } })
+    } else {
+      alert("Failed to start scan: " + (data.error || "Unknown error"))
+    }
+  } catch (err) {
+    alert("Failed to connect to backend: " + err.message)
+  }
 }
 
 onMounted(() => {
