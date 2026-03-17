@@ -1,77 +1,118 @@
 <template>
-  <div class="report-view">
-    <!-- Loading State -->
-    <div v-if="loading" class="loading-state">
-      <div class="loading-spinner"></div>
-      <p class="text-mono">Loading report for scan {{ scanId }}...</p>
-    </div>
+  <div :class="isDark ? 'dark' : ''">
+    <div class="min-h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 transition-colors duration-300">
+      <div class="max-w-[1100px] mx-auto px-4 sm:px-8 lg:px-12 py-8">
 
-    <!-- Error State -->
-    <div v-else-if="error" class="error-state glass-panel">
-      <h2 class="text-mono">>> Error</h2>
-      <p>{{ error }}</p>
-      <button class="cyber-button" @click="goHome">Go Back</button>
-    </div>
-
-    <!-- Report Content -->
-    <template v-else>
-      <div class="report-header">
-        <div class="title-area">
-          <h2 class="text-mono">>> SPECTER_REPORT // GENERATED</h2>
-          <p class="subtitle">
-            Target: {{ reportData.target_url }} |
-            Duration: {{ formatDuration(reportData.duration_seconds) }} |
-            Agents: {{ reportData.agents?.length || 0 }}
-          </p>
+        <!-- Loading State -->
+        <div v-if="loading" class="flex flex-col items-center justify-center h-[60vh] gap-4 animate-fade-in-up">
+          <div class="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+          <p class="text-sm font-mono text-slate-500 dark:text-slate-400">Loading report for scan {{ scanId }}...</p>
         </div>
-        <div class="actions">
-          <button class="cyber-button" @click="goHome">New Scan</button>
-        </div>
-      </div>
 
-      <div class="report-content glass-panel">
-        <div class="summary-cards">
-          <div class="summary-card danger">
-            <div class="count">{{ reportData.summary?.logic_flaws || 0 }}</div>
-            <div class="label">Logic Flaws</div>
-          </div>
-          <div class="summary-card warning">
-            <div class="count">{{ reportData.summary?.security_issues || 0 }}</div>
-            <div class="label">Security Issues</div>
-          </div>
-          <div class="summary-card info">
-            <div class="count">{{ reportData.summary?.performance_issues || 0 }}</div>
-            <div class="label">Performance Hits</div>
+        <!-- Error State -->
+        <div v-else-if="error" class="flex flex-col items-center justify-center h-[50vh] gap-6 animate-fade-in-up">
+          <div class="rounded-xl border border-red-300 dark:border-red-800/50 bg-white dark:bg-background-dark/50 p-8 text-center max-w-md">
+            <span class="material-symbols-outlined text-5xl text-red-500 mb-4">error</span>
+            <h2 class="text-xl font-bold text-red-500 font-mono mb-2">Error</h2>
+            <p class="text-slate-600 dark:text-slate-400 mb-6">{{ error }}</p>
+            <button @click="goHome" class="flex h-10 items-center justify-center rounded-lg px-6 bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all mx-auto">
+              Go Back
+            </button>
           </div>
         </div>
 
-        <!-- AI-Generated Narrative Report -->
-        <div class="narrative-report" v-if="reportData.report_markdown">
-          <div class="report-markdown" v-html="renderMarkdown(reportData.report_markdown)"></div>
-        </div>
-
-        <!-- Findings Details (fallback if no markdown) -->
-        <div class="narrative-report" v-else-if="findings.length > 0">
-          <h3>Findings</h3>
-          <div v-for="finding in findings" :key="finding.id" class="finding-card" :class="finding.severity">
-            <div class="finding-header">
-              <h4>{{ finding.title }}</h4>
-              <span class="badge" :class="getSeverityClass(finding.severity)">{{ finding.severity }}</span>
+        <!-- Report Content -->
+        <template v-else>
+          <!-- Report Header -->
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-primary/20 animate-fade-in-up">
+            <div class="flex items-center gap-4">
+              <button @click="goHome" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary hover:text-white transition-all">
+                <span class="material-symbols-outlined text-lg">arrow_back</span>
+              </button>
+              <div>
+                <h1 class="text-2xl font-bold text-primary flex items-center gap-2">
+                  <span class="material-symbols-outlined text-2xl">summarize</span>
+                  Scan Report
+                </h1>
+                <p class="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1">
+                  Target: {{ reportData.target_url || '...' }} |
+                  Duration: {{ formatDuration(reportData.duration_seconds) }} |
+                  Agents: {{ reportData.agents?.length || 0 }}
+                </p>
+              </div>
             </div>
-            <p>{{ finding.description }}</p>
-            <div v-if="finding.evidence" class="code-snippet text-mono">
-              {{ finding.evidence }}
+            <div class="flex items-center gap-3">
+              <button @click="toggleTheme" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-primary hover:text-white transition-all">
+                <span class="material-symbols-outlined text-lg">{{ isDark ? 'light_mode' : 'dark_mode' }}</span>
+              </button>
+              <button @click="goHome" class="flex h-10 items-center justify-center rounded-lg px-5 bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
+                <span class="material-symbols-outlined text-lg mr-1">add</span>
+                New Scan
+              </button>
             </div>
           </div>
-        </div>
 
-        <!-- No Findings -->
-        <div class="narrative-report" v-else>
-          <h3>Results</h3>
-          <p class="no-findings">✅ No vulnerability findings detected during this scan.</p>
-        </div>
+          <!-- Summary Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 animate-fade-in-up animate-delay-200">
+            <div class="rounded-xl border-t-4 border-t-red-500 border border-red-200 dark:border-red-800/30 bg-white dark:bg-background-dark/50 p-6 text-center hover:shadow-lg hover:shadow-red-500/5 transition-shadow">
+              <div class="text-4xl font-bold font-mono text-red-500 mb-1">{{ reportData.summary?.logic_flaws || 0 }}</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Logic Flaws</div>
+            </div>
+            <div class="rounded-xl border-t-4 border-t-amber-500 border border-amber-200 dark:border-amber-800/30 bg-white dark:bg-background-dark/50 p-6 text-center hover:shadow-lg hover:shadow-amber-500/5 transition-shadow">
+              <div class="text-4xl font-bold font-mono text-amber-500 mb-1">{{ reportData.summary?.security_issues || 0 }}</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Security Issues</div>
+            </div>
+            <div class="rounded-xl border-t-4 border-t-blue-500 border border-blue-200 dark:border-blue-800/30 bg-white dark:bg-background-dark/50 p-6 text-center hover:shadow-lg hover:shadow-blue-500/5 transition-shadow">
+              <div class="text-4xl font-bold font-mono text-blue-500 mb-1">{{ reportData.summary?.performance_issues || 0 }}</div>
+              <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Performance Hits</div>
+            </div>
+          </div>
+
+          <!-- Report Body -->
+          <div class="rounded-xl border border-primary/20 bg-white dark:bg-background-dark/50 p-6 sm:p-8 shadow-sm animate-fade-in-up animate-delay-300">
+
+            <!-- AI-Generated Narrative Report -->
+            <div v-if="reportData.report_markdown" class="prose-report" v-html="renderMarkdown(reportData.report_markdown)"></div>
+
+            <!-- Findings Details (fallback if no markdown) -->
+            <div v-else-if="findings.length > 0">
+              <h3 class="text-lg font-bold text-primary mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined">bug_report</span>
+                Findings
+              </h3>
+              <div v-for="finding in findings" :key="finding.id"
+                class="rounded-lg border p-5 mb-4 transition-all hover:shadow-md"
+                :class="{
+                  'border-l-4 border-l-red-500 border-red-200 dark:border-red-800/30 bg-red-50/50 dark:bg-red-900/5': finding.severity === 'critical',
+                  'border-l-4 border-l-amber-500 border-amber-200 dark:border-amber-800/30 bg-amber-50/50 dark:bg-amber-900/5': finding.severity === 'high',
+                  'border-l-4 border-l-yellow-500 border-yellow-200 dark:border-yellow-800/30 bg-yellow-50/50 dark:bg-yellow-900/5': finding.severity === 'medium',
+                  'border-l-4 border-l-blue-500 border-blue-200 dark:border-blue-800/30 bg-blue-50/50 dark:bg-blue-900/5': finding.severity === 'low',
+                }">
+                <div class="flex items-center justify-between mb-3">
+                  <h4 class="font-bold text-slate-900 dark:text-slate-100 font-mono text-sm">{{ finding.title }}</h4>
+                  <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full"
+                    :class="{
+                      'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400': finding.severity === 'critical',
+                      'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400': finding.severity === 'high',
+                      'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400': finding.severity === 'medium',
+                      'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400': finding.severity === 'low',
+                    }">{{ finding.severity }}</span>
+                </div>
+                <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{{ finding.description }}</p>
+                <div v-if="finding.evidence" class="mt-3 bg-[#0d0914] text-slate-300 rounded-lg p-4 font-mono text-xs border border-slate-700 overflow-x-auto whitespace-pre-wrap">{{ finding.evidence }}</div>
+              </div>
+            </div>
+
+            <!-- No Findings -->
+            <div v-else class="text-center py-12">
+              <span class="material-symbols-outlined text-5xl text-green-500 mb-3">verified</span>
+              <p class="text-lg text-green-500 font-semibold">No vulnerability findings detected during this scan.</p>
+            </div>
+          </div>
+        </template>
+
       </div>
-    </template>
+    </div>
   </div>
 </template>
 
@@ -81,12 +122,18 @@ import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
 const route = useRoute()
+const isDark = ref(true)
 
 const scanId = ref('')
 const loading = ref(true)
 const error = ref('')
 const reportData = ref({})
 const findings = ref([])
+
+const toggleTheme = () => {
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+}
 
 const goHome = () => {
   router.push('/')
@@ -99,32 +146,21 @@ const formatDuration = (seconds) => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
-const getSeverityClass = (severity) => {
-  switch (severity) {
-    case 'critical': return 'red'
-    case 'high': return 'orange'
-    case 'medium': return 'yellow'
-    case 'low': return 'blue'
-    default: return 'gray'
-  }
-}
-
 const renderMarkdown = (md) => {
-  // Simple markdown to HTML converter for the report
   return md
-    .replace(/^### (.*$)/gm, '<h4>$1</h4>')
-    .replace(/^## (.*$)/gm, '<h3>$1</h3>')
-    .replace(/^# (.*$)/gm, '<h2>$1</h2>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^### (.*$)/gm, '<h4 class="text-base font-bold text-slate-900 dark:text-slate-100 mt-6 mb-3">$1</h4>')
+    .replace(/^## (.*$)/gm, '<h3 class="text-lg font-bold text-primary mt-8 mb-4 pb-2 border-b border-primary/20">$1</h3>')
+    .replace(/^# (.*$)/gm, '<h2 class="text-xl font-bold text-primary mt-10 mb-4">$1</h2>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-primary font-semibold">$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`(.*?)`/g, '<code>$1</code>')
+    .replace(/`(.*?)`/g, '<code class="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm font-mono text-primary">$1</code>')
     .replace(/```[\s\S]*?```/g, (match) => {
       const code = match.replace(/```\w*\n?/g, '').replace(/```/g, '')
-      return `<div class="code-snippet text-mono">${code}</div>`
+      return `<div class="bg-[#0d0914] text-slate-300 rounded-lg p-4 font-mono text-xs border border-slate-700 overflow-x-auto whitespace-pre-wrap my-4">${code}</div>`
     })
-    .replace(/^- (.*$)/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-    .replace(/\n\n/g, '</p><p>')
+    .replace(/^- (.*$)/gm, '<li class="text-slate-700 dark:text-slate-300 mb-1 ml-4">$1</li>')
+    .replace(/(<li>.*<\/li>)/s, '<ul class="list-disc pl-4 mb-4">$1</ul>')
+    .replace(/\n\n/g, '</p><p class="text-slate-700 dark:text-slate-300 leading-relaxed mb-4">')
     .replace(/\n/g, '<br>')
 }
 
@@ -137,7 +173,6 @@ const fetchReport = async () => {
     const data = await response.json()
     reportData.value = data
 
-    // Also fetch findings separately for structured view
     const findingsRes = await fetch(`/api/report/${scanId.value}/findings`)
     if (findingsRes.ok) {
       const findingsData = await findingsRes.json()
@@ -151,7 +186,6 @@ const fetchReport = async () => {
 }
 
 const pollUntilReady = async () => {
-  // Poll scan status until report is ready
   const maxAttempts = 60
   for (let i = 0; i < maxAttempts; i++) {
     try {
@@ -174,6 +208,7 @@ const pollUntilReady = async () => {
 
 onMounted(async () => {
   scanId.value = route.query.scan_id || ''
+  isDark.value = document.documentElement.classList.contains('dark')
 
   if (!scanId.value) {
     error.value = 'No scan_id provided'
@@ -181,14 +216,12 @@ onMounted(async () => {
     return
   }
 
-  // First try to fetch directly (report might already be ready)
   try {
     const res = await fetch(`/api/scan/${scanId.value}`)
     const data = await res.json()
     if (data.status === 'completed') {
       await fetchReport()
     } else {
-      // Poll until ready
       await pollUntilReady()
     }
   } catch {
@@ -196,231 +229,3 @@ onMounted(async () => {
   }
 })
 </script>
-
-<style scoped>
-.report-view {
-  min-height: calc(100vh - 120px);
-}
-
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 60vh;
-  gap: 1rem;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--primary-color);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.error-state {
-  padding: 2rem;
-  text-align: center;
-  max-width: 500px;
-  margin: 4rem auto;
-}
-
-.error-state h2 { color: var(--danger-color); margin-bottom: 1rem; }
-.error-state p { color: var(--text-secondary); margin-bottom: 2rem; }
-
-.report-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 2rem;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 1rem;
-}
-
-.title-area h2 {
-  color: var(--primary-color);
-  margin-bottom: 0.5rem;
-}
-
-.title-area .subtitle {
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-}
-
-.actions {
-  display: flex;
-  gap: 1rem;
-}
-
-.report-content {
-  padding: 2rem;
-}
-
-.summary-cards {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 3rem;
-}
-
-.summary-card {
-  flex: 1;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  padding: 1.5rem;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.summary-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 4px;
-}
-
-.summary-card.danger::before { background: var(--danger-color); }
-.summary-card.warning::before { background: var(--warning-color); }
-.summary-card.info::before { background: var(--accent-color); }
-
-.summary-card .count {
-  font-size: 3rem;
-  font-family: var(--font-mono);
-  font-weight: bold;
-  line-height: 1;
-  margin-bottom: 0.5rem;
-}
-
-.summary-card.danger .count { color: var(--danger-color); text-shadow: var(--glow-danger); }
-.summary-card.warning .count { color: var(--warning-color); }
-.summary-card.info .count { color: var(--accent-color); }
-
-.summary-card .label {
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  font-size: 0.9rem;
-  letter-spacing: 1px;
-}
-
-/* Narrative */
-.narrative-report h3,
-.report-markdown :deep(h3) {
-  color: var(--primary-color);
-  border-bottom: 1px dashed rgba(159, 122, 234, 0.3);
-  padding-bottom: 0.5rem;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-}
-
-.report-markdown :deep(h2) {
-  color: var(--primary-color);
-  margin-top: 2.5rem;
-  margin-bottom: 1rem;
-}
-
-.report-markdown :deep(h4) {
-  color: var(--text-primary);
-  margin-top: 1.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.narrative-report p,
-.report-markdown :deep(p) {
-  color: var(--text-primary);
-  margin-bottom: 1.5rem;
-  font-size: 1.05rem;
-  line-height: 1.7;
-}
-
-.report-markdown :deep(ul) {
-  list-style: disc;
-  padding-left: 2rem;
-  margin-bottom: 1rem;
-}
-
-.report-markdown :deep(li) {
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-}
-
-.report-markdown :deep(strong) {
-  color: var(--primary-color);
-}
-
-.report-markdown :deep(code) {
-  background: rgba(0, 0, 0, 0.4);
-  padding: 0.1rem 0.4rem;
-  border-radius: 3px;
-  font-family: var(--font-mono);
-  font-size: 0.9em;
-  color: var(--accent-color);
-}
-
-.no-findings {
-  text-align: center;
-  padding: 3rem;
-  font-size: 1.2rem;
-  color: #27c93f;
-}
-
-.finding-card {
-  background: rgba(0,0,0,0.4);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  border-left-width: 4px;
-}
-
-.finding-card.critical { border-left-color: var(--danger-color); }
-.finding-card.high { border-left-color: var(--warning-color); }
-.finding-card.medium { border-left-color: var(--accent-color); }
-.finding-card.low { border-left-color: var(--text-muted); }
-
-.finding-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.finding-header h4 {
-  margin: 0;
-  font-family: var(--font-mono);
-  color: var(--text-primary);
-}
-
-.badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.badge.red { background: rgba(252, 129, 129, 0.2); color: var(--danger-color); border: 1px solid var(--danger-color); }
-.badge.orange { background: rgba(246, 173, 85, 0.2); color: var(--warning-color); border: 1px solid var(--warning-color); }
-.badge.yellow { background: rgba(234, 179, 8, 0.2); color: #eab308; border: 1px solid #eab308; }
-.badge.blue { background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid #3b82f6; }
-
-.code-snippet {
-  background: #0d0914;
-  border: 1px solid #333;
-  padding: 1rem;
-  border-radius: var(--border-radius-sm);
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  line-height: 1.4;
-  overflow-x: auto;
-  white-space: pre-wrap;
-}
-</style>

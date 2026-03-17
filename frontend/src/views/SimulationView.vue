@@ -1,70 +1,133 @@
 <template>
-  <div class="simulation-view">
-    <div class="simulation-header">
-      <h2>> Simulation in Progress</h2>
-      <button class="cyber-button danger" @click="abortSimulation">ABORT</button>
-    </div>
+  <div :class="isDark ? 'dark' : ''">
+    <div class="min-h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 transition-colors duration-300">
+      <div class="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-12 py-8">
 
-    <div class="dashboard-grid">
-      <!-- Target Map / Stats -->
-      <div class="glass-panel stats-panel">
-        <h3 class="text-mono">>> Swarm Metrics</h3>
-        <div class="metrics-grid">
-          <div class="metric">
-            <span class="label">Total Agen</span>
-            <span class="value">{{ totalAgents }}</span>
-          </div>
-          <div class="metric">
-            <span class="label">Routes</span>
-            <span class="value">{{ totalRoutes }}</span>
-          </div>
-          <div class="metric highlight-danger">
-            <span class="label">Flaws Found</span>
-            <span class="value">{{ flawsFound }}</span>
-          </div>
-          <div class="metric highlight-warning">
-            <span class="label">Security Issues</span>
-            <span class="value">{{ securityIssues }}</span>
-          </div>
-        </div>
-        <div class="status-bar">
-          <span class="status-label text-mono">STATUS:</span>
-          <span class="status-value" :class="scanStatus">{{ scanStatus.toUpperCase() }}</span>
-        </div>
-      </div>
-
-      <!-- Agent Status Matrix -->
-      <div class="glass-panel agents-panel">
-        <h3 class="text-mono">>> Agent Matrix</h3>
-        <div class="agent-list">
-          <div v-for="agent in agents" :key="agent.id" class="agent-card" :class="agent.status">
-            <div class="agent-icon" :title="agent.role">
-              {{ getRoleIcon(agent.role) }}
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8 animate-fade-in-up">
+          <div class="flex items-center gap-4">
+            <button @click="$router.push('/')" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary hover:text-white transition-all">
+              <span class="material-symbols-outlined text-lg">arrow_back</span>
+            </button>
+            <div>
+              <h1 class="text-2xl font-bold text-primary flex items-center gap-2">
+                <span class="material-symbols-outlined text-2xl">radar</span>
+                Simulation in Progress
+              </h1>
+              <p class="text-sm text-slate-500 dark:text-slate-400 font-mono mt-1">scan_id: {{ scanId || '...' }}</p>
             </div>
-            <div class="agent-details">
-              <span class="agent-id text-mono">{{ agent.id }}</span>
-              <span class="agent-action">{{ agent.action || 'Waiting...' }}</span>
-            </div>
-            <div class="agent-status-dot"></div>
+          </div>
+          <div class="flex items-center gap-3">
+            <button @click="toggleTheme" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-primary hover:text-white transition-all">
+              <span class="material-symbols-outlined text-lg">{{ isDark ? 'light_mode' : 'dark_mode' }}</span>
+            </button>
+            <button @click="abortSimulation" class="flex h-10 items-center justify-center rounded-lg px-5 bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-all shadow-lg shadow-red-600/20">
+              <span class="material-symbols-outlined text-lg mr-1">cancel</span>
+              ABORT
+            </button>
           </div>
         </div>
-      </div>
 
-      <!-- Terminal / Live Log -->
-      <div class="glass-panel terminal-panel">
-        <div class="terminal-header">
-          <span class="dot red"></span>
-          <span class="dot yellow"></span>
-          <span class="dot green"></span>
-          <span class="title text-mono">specter-swarm.log</span>
-        </div>
-        <div class="terminal-body text-mono" ref="terminalBody">
-          <div v-for="(log, idx) in logs" :key="idx" class="log-entry" :class="log.level">
-            <span class="timestamp">[{{ log.time }}]</span>
-            <span class="source">[{{ log.source }}]</span>
-            <span class="message">{{ log.message }}</span>
+        <!-- Dashboard Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up animate-delay-200">
+
+          <!-- Swarm Metrics -->
+          <div class="lg:col-span-1 rounded-xl border border-primary/20 bg-white dark:bg-background-dark/50 p-6 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-lg">monitoring</span>
+              Swarm Metrics
+            </h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="rounded-lg bg-slate-100 dark:bg-slate-800/60 p-4 text-center border border-transparent hover:border-primary/30 transition-colors">
+                <div class="text-3xl font-bold font-mono text-primary">{{ totalAgents }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 uppercase mt-1">Total Agents</div>
+              </div>
+              <div class="rounded-lg bg-slate-100 dark:bg-slate-800/60 p-4 text-center border border-transparent hover:border-primary/30 transition-colors">
+                <div class="text-3xl font-bold font-mono text-primary">{{ totalRoutes }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 uppercase mt-1">Routes</div>
+              </div>
+              <div class="rounded-lg bg-red-50 dark:bg-red-900/10 p-4 text-center border border-red-200 dark:border-red-800/30">
+                <div class="text-3xl font-bold font-mono text-red-500">{{ flawsFound }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 uppercase mt-1">Flaws Found</div>
+              </div>
+              <div class="rounded-lg bg-amber-50 dark:bg-amber-900/10 p-4 text-center border border-amber-200 dark:border-amber-800/30">
+                <div class="text-3xl font-bold font-mono text-amber-500">{{ securityIssues }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 uppercase mt-1">Security Issues</div>
+              </div>
+            </div>
+
+            <!-- Status -->
+            <div class="mt-4 px-4 py-3 rounded-lg bg-slate-100 dark:bg-slate-800/60 font-mono text-sm flex items-center gap-2">
+              <span class="text-slate-500 dark:text-slate-400">STATUS:</span>
+              <span :class="statusColor" class="font-bold uppercase">{{ scanStatus }}</span>
+              <span v-if="scanStatus === 'executing'" class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse ml-1"></span>
+            </div>
           </div>
-          <div class="cursor">_</div>
+
+          <!-- Agent Matrix -->
+          <div class="lg:col-span-1 rounded-xl border border-primary/20 bg-white dark:bg-background-dark/50 p-6 shadow-sm flex flex-col max-h-[600px]">
+            <h3 class="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-lg">groups</span>
+              Agent Matrix
+            </h3>
+            <div class="flex flex-col gap-3 overflow-y-auto flex-1 pr-1">
+              <div v-for="agent in agents" :key="agent.id"
+                class="flex items-center gap-3 p-3 rounded-lg border transition-all"
+                :class="{
+                  'border-primary/30 bg-primary/5': agent.status === 'active',
+                  'border-red-400/30 bg-red-500/5': agent.status === 'danger',
+                  'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40': agent.status === 'idle'
+                }">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center text-lg bg-slate-200 dark:bg-slate-700">
+                  {{ getRoleIcon(agent.role) }}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">{{ agent.id }}</div>
+                  <div class="text-sm text-slate-700 dark:text-slate-200 truncate">{{ agent.action || 'Waiting...' }}</div>
+                </div>
+                <div class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  :class="{
+                    'bg-primary shadow-[0_0_6px_rgba(127,19,236,0.6)] animate-pulse': agent.status === 'active',
+                    'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.6)] animate-pulse': agent.status === 'danger',
+                    'bg-slate-400': agent.status === 'idle'
+                  }">
+                </div>
+              </div>
+              <div v-if="agents.length === 0" class="text-center text-slate-400 py-8 text-sm">
+                Waiting for agents to spawn...
+              </div>
+            </div>
+          </div>
+
+          <!-- Terminal / Live Log -->
+          <div class="lg:col-span-1 rounded-xl border border-primary/20 overflow-hidden shadow-sm flex flex-col max-h-[600px]">
+            <!-- Terminal chrome -->
+            <div class="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+              <span class="w-3 h-3 rounded-full bg-red-400"></span>
+              <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+              <span class="w-3 h-3 rounded-full bg-green-400"></span>
+              <span class="ml-3 text-xs font-mono text-slate-500 dark:text-slate-400">specter-swarm.log</span>
+            </div>
+            <!-- Terminal body -->
+            <div class="bg-[#0d0914] flex-1 p-4 overflow-y-auto font-mono text-[13px] leading-relaxed" ref="terminalBody">
+              <div v-for="(log, idx) in logs" :key="idx" class="mb-1">
+                <span class="text-slate-600">[{{ log.time }}]</span>
+                <span :class="{
+                  'text-primary': log.level === 'info',
+                  'text-green-400': log.level === 'success',
+                  'text-amber-400': log.level === 'warning',
+                  'text-red-400': log.level === 'error',
+                }" class="mx-1">[{{ log.source }}]</span>
+                <span :class="{
+                  'text-slate-300': log.level === 'info',
+                  'text-green-300': log.level === 'success',
+                  'text-amber-300': log.level === 'warning',
+                  'text-red-300': log.level === 'error',
+                }">{{ log.message }}</span>
+              </div>
+              <div class="text-primary animate-pulse inline-block">_</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -72,12 +135,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
 const route = useRoute()
 const terminalBody = ref(null)
+const isDark = ref(true)
 
 const scanId = ref('')
 const scanStatus = ref('binding')
@@ -90,6 +154,24 @@ const logs = ref([])
 const agents = ref([])
 
 let eventSource = null
+
+const toggleTheme = () => {
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+}
+
+const statusColor = computed(() => {
+  switch (scanStatus.value) {
+    case 'binding': return 'text-primary'
+    case 'spawning': return 'text-primary'
+    case 'executing': return 'text-amber-500'
+    case 'reporting': return 'text-primary'
+    case 'completed': return 'text-green-500'
+    case 'error': return 'text-red-500'
+    case 'aborted': return 'text-red-500'
+    default: return 'text-slate-500'
+  }
+})
 
 const getRoleIcon = (role) => {
   if (role === 'user') return '👤'
@@ -112,7 +194,6 @@ const addLog = (source, message, level = 'info') => {
   })
   if (logs.value.length > 100) logs.value.shift()
 
-  // Auto-scroll
   if (terminalBody.value) {
     setTimeout(() => {
       terminalBody.value.scrollTop = terminalBody.value.scrollHeight
@@ -165,7 +246,6 @@ const connectSSE = (id) => {
 
   eventSource.addEventListener('agent_action', (e) => {
     const data = JSON.parse(e.data)
-    // Update agent in list
     const agent = agents.value.find(a => a.id === data.agent_id)
     if (agent) {
       agent.action = data.action
@@ -187,7 +267,6 @@ const connectSSE = (id) => {
 
     addLog(data.agent_id || 'SYSTEM', `[${data.severity?.toUpperCase()}] ${data.title}`, level)
 
-    // Make the discovering agent "danger" status
     const agent = agents.value.find(a => a.id === data.agent_id)
     if (agent) {
       agent.status = 'danger'
@@ -199,7 +278,6 @@ const connectSSE = (id) => {
     addLog('SYSTEM', `Simulation complete. ${data.total_findings} findings in ${data.duration_seconds}s.`, 'success')
     scanStatus.value = 'reporting'
 
-    // Mark all agents as completed
     agents.value.forEach(a => {
       a.status = 'idle'
       a.action = 'Completed'
@@ -215,7 +293,6 @@ const connectSSE = (id) => {
     addLog('SYSTEM', 'Report ready! Redirecting...', 'success')
     scanStatus.value = 'completed'
 
-    // Navigate to report after a short delay
     setTimeout(() => {
       if (eventSource) eventSource.close()
       router.push({ path: '/report', query: { scan_id: data.scan_id } })
@@ -234,7 +311,6 @@ const connectSSE = (id) => {
   })
 
   eventSource.onerror = () => {
-    // SSE will auto-reconnect, just log it
     addLog('SYSTEM', 'Connection interrupted, reconnecting...', 'warning')
   }
 }
@@ -247,6 +323,9 @@ onMounted(() => {
     setTimeout(() => router.push('/'), 2000)
     return
   }
+
+  // Sync theme
+  isDark.value = document.documentElement.classList.contains('dark')
 
   addLog('SYSTEM', `Connecting to scan ${scanId.value}...`)
   connectSSE(scanId.value)
@@ -269,254 +348,3 @@ const abortSimulation = async () => {
   router.push('/')
 }
 </script>
-
-<style scoped>
-.simulation-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.simulation-header h2 {
-  color: var(--primary-color);
-  text-shadow: var(--glow-primary);
-  margin: 0;
-  text-transform: uppercase;
-}
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto 1fr;
-  gap: 1.5rem;
-  height: calc(100vh - 200px);
-}
-
-.stats-panel {
-  grid-column: 1 / 2;
-  grid-row: 1 / 2;
-  padding: 1.5rem;
-}
-
-.agents-panel {
-  grid-column: 2 / 3;
-  grid-row: 1 / 3;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.terminal-panel {
-  grid-column: 1 / 2;
-  grid-row: 2 / 3;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-h3 {
-  color: var(--text-secondary);
-  font-size: 1rem;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 0.5rem;
-}
-
-/* Status */
-.status-bar {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-}
-
-.status-label { color: var(--text-muted); margin-right: 0.5rem; }
-.status-value { font-weight: bold; }
-.status-value.binding { color: var(--accent-color); }
-.status-value.spawning { color: var(--primary-color); }
-.status-value.executing { color: var(--warning-color); animation: pulse-text 1s infinite; }
-.status-value.reporting { color: var(--primary-color); }
-.status-value.completed { color: #27c93f; }
-.status-value.error { color: var(--danger-color); }
-
-@keyframes pulse-text { 50% { opacity: 0.5; } }
-
-/* Metrics */
-.metrics-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.metric {
-  background: rgba(0, 0, 0, 0.3);
-  padding: 1rem;
-  border-radius: var(--border-radius-sm);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border: 1px solid transparent;
-}
-
-.metric .label {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-}
-
-.metric .value {
-  font-size: 2rem;
-  font-weight: bold;
-  font-family: var(--font-mono);
-  color: var(--primary-color);
-}
-
-.metric.highlight-danger {
-  border-color: rgba(252, 129, 129, 0.3);
-}
-.metric.highlight-danger .value {
-  color: var(--danger-color);
-  text-shadow: var(--glow-danger);
-}
-
-.metric.highlight-warning .value {
-  color: var(--warning-color);
-}
-
-/* Agents */
-.agent-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  overflow-y: auto;
-  flex: 1;
-  padding-right: 0.5rem;
-}
-
-.agent-card {
-  display: flex;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 0.75rem 1rem;
-  border-radius: var(--border-radius-sm);
-  border-left: 3px solid var(--text-muted);
-  transition: all 0.3s ease;
-}
-
-.agent-card.active { border-left-color: var(--primary-color); }
-.agent-card.danger { border-left-color: var(--danger-color); background: rgba(252, 129, 129, 0.05); }
-
-.agent-icon {
-  font-size: 1.5rem;
-  margin-right: 1rem;
-  background: rgba(255, 255, 255, 0.1);
-  width: 40px;
-  height: 40px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 50%;
-}
-
-.agent-details {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.agent-id {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  font-weight: bold;
-}
-
-.agent-action {
-  font-size: 0.9rem;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 250px;
-}
-
-.agent-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-muted);
-}
-
-.agent-card.active .agent-status-dot {
-  background: var(--primary-color);
-  box-shadow: var(--glow-primary);
-  animation: pulse 2s infinite;
-}
-
-.agent-card.danger .agent-status-dot {
-  background: var(--danger-color);
-  box-shadow: var(--glow-danger);
-  animation: pulse 1s infinite;
-}
-
-/* Terminal */
-.terminal-header {
-  background: #1a1a2e;
-  padding: 0.5rem 1rem;
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #000;
-}
-
-.dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  margin-right: 6px;
-}
-
-.dot.red { background: #ff5f56; }
-.dot.yellow { background: #ffbd2e; }
-.dot.green { background: #27c93f; }
-
-.terminal-header .title {
-  margin-left: 1rem;
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
-.terminal-body {
-  background: #000;
-  flex: 1;
-  padding: 1rem;
-  overflow-y: auto;
-  font-size: 0.9rem;
-}
-
-.log-entry { margin-bottom: 0.25rem; }
-.log-entry .timestamp { color: var(--text-muted); margin-right: 0.5rem; }
-.log-entry .source { color: var(--accent-color); margin-right: 0.5rem; }
-.log-entry .message { color: var(--text-primary); }
-
-.log-entry.warning .source { color: var(--warning-color); }
-.log-entry.warning .message { color: var(--warning-color); }
-.log-entry.error .source { color: var(--danger-color); }
-.log-entry.error .message { color: var(--danger-color); }
-.log-entry.success .source { color: #27c93f; }
-.log-entry.success .message { color: #27c93f; }
-
-.cursor {
-  display: inline-block;
-  color: var(--primary-color);
-  animation: blink 1s step-end infinite;
-}
-
-@keyframes blink { 50% { opacity: 0; } }
-@keyframes pulse {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(var(--primary-color), 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(var(--primary-color), 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(var(--primary-color), 0); }
-}
-</style>
