@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Process Logo</title>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Original image is 512x512
+            // The ghost is roughly in the top 360 pixels.
+            // Let's crop it and remove the dark background.
+            
+            const cropHeight = 360;
+            canvas.width = img.width;
+            canvas.height = cropHeight;
+            
+            ctx.drawImage(img, 0, 0, img.width, cropHeight, 0, 0, canvas.width, canvas.height);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                
+                // If the pixel is dark enough, make it transparent
+                if (r < 35 && g < 35 && b < 45) {
+                    data[i + 3] = 0; // Set alpha to 0
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            
+            // To save, we would typically do this, but since we have no easy way 
+            // to automatically download via Puppeteer here without jumping through hoops,
+            // we will let the browser print the base64 string to console.
+            const dataURL = canvas.toDataURL('image/png');
+            console.log(dataURL);
+        };
+        // The path to the uploaded image:
+        img.src = 'file:///C:/Users/Bagus%20Ardin/.gemini/antigravity/attachments/e1cce1ca-b141-4c6e-ad29-cd5fca2a7b8e.png';
+    </script>
+</body>
+</html>

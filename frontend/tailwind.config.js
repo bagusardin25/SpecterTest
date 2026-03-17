@@ -6,7 +6,7 @@ export default {
     "./src/**/*.{vue,js,ts,jsx,tsx}",
   ],
   theme: {
-      extend: {
+        extend: {
           colors: {
               "primary": "#7f13ec",
               "background-light": "#f7f6f8",
@@ -16,6 +16,15 @@ export default {
               "display": ["Space Grotesk", "sans-serif"]
           },
           borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          keyframes: {
+            fadeInUp: {
+              '0%': { opacity: '0', transform: 'translateY(20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            }
+          },
+          animation: {
+            'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+          }
       },
   },
   plugins: [
